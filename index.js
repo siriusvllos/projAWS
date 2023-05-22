@@ -23,25 +23,21 @@ const publicSubnetIds = vpc.publicSubnetIds;
 // https://github.com/pulumi/examples/tree/master/aws-js-webserver
 let size = "t2.micro"; // eh free ta danado :)
 
-let amiPromise = aws.ec2.getAmi(
-  {
-    filters: [
-      {
-        name: "name",
-        values: ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"],
-      },
-      {
-        name: "virtualization-type",
-        values: ["hvm"],
-      },
-    ],
-// aws ec2 describe-images --owner "aws-marketplace" --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*" "Name=virtualization-type,Values=hvm" --region "sa-east-1"
-    mostRecent: true,
-    owners: ["aws-marketplace"], // Canonical is the owner of official Ubuntu AMIs 
-  },
-   // { provider: new aws.Provider("aws-sa-east-1", { region: "sa-east-1" }) }
-);
-var amiFinal = amiPromise.then((ami) => ami); // istoe funcao anonima ou lambda
+let ami = aws.ec2.getAmi({
+  filters: [
+    {
+      name: "name",
+      values: ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"],
+    },
+    {
+      name: "virtualization-type",
+      values: ["hvm"],
+    },
+  ],
+  // aws ec2 describe-images --owner "aws-marketplace" --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*" "Name=virtualization-type,Values=hvm" --region "sa-east-1"
+  owners: ["aws-marketplace"],
+  mostRecent: true,
+});
 
 // EC2 SECURITY GROUP --- MAIN
 let group = new aws.ec2.SecurityGroup("main", {
@@ -57,7 +53,8 @@ let server = new aws.ec2.Instance("webserver-www", {
   vpcSecurityGroupIds: [group.id],
   subnetId: privateSubnetIds[1],
   // ami: "ami-0b7af114fb404cd23",
-  ami: amiFinal.id,
+  ami: ami.then((ami) => ami.name),
 });
+
 exports.publicIp = server.publicIp;
 exports.publicHostName = server.publicDns;
