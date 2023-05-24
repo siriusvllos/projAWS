@@ -45,7 +45,7 @@ let server = new aws.ec2.Instance("webserver-www", {
   keyName: deployer.keyName,
   vpcSecurityGroupIds: [group.id],
   subnetId: publicSubnetIds[1],
-  ami: ami.then((ami) => ami.name),
+  ami: ami.then((ami) => ami.id),
 }); // o ip desse cara* vai dentro do route53
 
 const bastion = new aws.route53.Record("bastion", {
