@@ -138,23 +138,29 @@ const bastion = new aws.route53.Record("bastion", {
   records: [server.publicIp], //desse cara*
 });
 
-const cost = new aws.budgets.Budget("cost", {
-  protect: true,
-  budgetType: "COST",
-  limitAmount: "30",
-  limitUnit: "USD",
-  startTime: "2033-05-25_00:00",
-  timeUnit: "MONTHLY",
-  notifications: [
-    {
-      threshold: 100,
-      thresholdType: "PERCENTAGE",
-      notificationType: "ACTUAL",
-      comparisonOperator: "GREATER_THAN",
-      subscriberEmailAddresses: ["sirusvllos@gmail.com", "lrfurtado@gmail.com"],
-    },
-  ],
-});
+const cost = new aws.budgets.Budget(
+  "cost",
+  {
+    budgetType: "COST",
+    limitAmount: "30",
+    limitUnit: "USD",
+    startTime: "2033-05-25_00:00",
+    timeUnit: "MONTHLY",
+    notifications: [
+      {
+        threshold: 100,
+        thresholdType: "PERCENTAGE",
+        notificationType: "ACTUAL",
+        comparisonOperator: "GREATER_THAN",
+        subscriberEmailAddresses: [
+          "sirusvllos@gmail.com",
+          "lrfurtado@gmail.com",
+        ],
+      },
+    ],
+  },
+  {protect: true}
+);
 
 exports.cost = cost.name;
 exports.publicIp = server.publicIp; // desse cara*
