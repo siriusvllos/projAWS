@@ -3,6 +3,8 @@ const pulumi = require("@pulumi/pulumi");
 const fs = require("fs");
 const aws = require("@pulumi/aws");
 const awsx = require("@pulumi/awsx");
+const classic = require("@pulumi/awsx/classic");
+const { SizeConstraintSet } = require("@pulumi/aws/waf");
 
 const deployer = new aws.ec2.KeyPair("deployer", {
   publicKey:
@@ -53,8 +55,6 @@ let group = new aws.ec2.SecurityGroup("main", {
 });
 
 const userData = fs.readFileSync("./userdata.sh", "ascii");
-// sudo npm install express ----> instalar todos os pacotes q o catinder requer instead
-// tee le uma coisa do teclado e grava num arquivo q eu passei como param
 
 let server = new aws.ec2.Instance("webserver-www", {
   instanceType: size,
@@ -72,7 +72,28 @@ const bastion = new aws.route53.Record("bastion", {
   name: "bastion",
   type: "A",
   ttl: 300,
-  records: [server.publicIp], //desse cara*
+  records: [server.publicIp], //desse cara* 
+  // vai associar esse nome aos 20 ips (autoscaling)
+});
+
+const autoScalingGroup = new classic.autoscaling.AutoScalingGroup("teste-asg", {
+  subnetIds: vpc.publicSubnetIds,
+  launchConfigurationArgs: {
+    instanceType: size,
+    keyName: deployer.keyName,
+    associatePublicIpAddress: true,
+    namePrefix: "bastion",
+    securityGroups: [group.id],
+    userData: userData,
+  },
+});
+autoScalingGroup.scaleOnSchedule("scaleUpOnThursday", {
+  desiredCapacity: 2,
+  recurrence: { dayOfWeek: "Thursday" },
+});
+autoScalingGroup.scaleOnSchedule("scaleDownOnFriday", {
+  desiredCapacity: 1,
+  recurrence: { dayOfWeek: "Friday" },
 });
 
 const cost = new aws.budgets.Budget(
