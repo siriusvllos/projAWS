@@ -80,6 +80,7 @@ const autoScalingGroup = new classic.autoscaling.AutoScalingGroup("teste-asg", {
   subnetIds: vpc.publicSubnetIds,
   launchConfigurationArgs: {
     instanceType: size,
+    ecsOptimizedAMIName: ami.then((ami) => ami.id),
     keyName: deployer.keyName,
     associatePublicIpAddress: true,
     namePrefix: "bastion",
