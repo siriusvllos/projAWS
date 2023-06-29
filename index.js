@@ -72,7 +72,7 @@ const bastion = new aws.route53.Record("bastion", {
   name: "bastion",
   type: "A",
   ttl: 300,
-  records: [server.publicIp], //desse cara* 
+  records: [server.publicIp], //desse cara*
   // vai associar esse nome aos 20 ips (autoscaling)
 });
 
@@ -80,7 +80,7 @@ const autoScalingGroup = new classic.autoscaling.AutoScalingGroup("teste-asg", {
   subnetIds: vpc.publicSubnetIds,
   launchConfigurationArgs: {
     instanceType: size,
-    ecsOptimizedAMIName: ami.then((ami) => ami.id),
+    imageId: ami.then((ami) => ami.id),
     keyName: deployer.keyName,
     associatePublicIpAddress: true,
     namePrefix: "bastion",
