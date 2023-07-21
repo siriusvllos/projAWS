@@ -77,12 +77,13 @@ const bastion = new aws.route53.Record("bastion", {
 });
 
 const autoScalingGroup = new classic.autoscaling.AutoScalingGroup("teste-asg", {
-  subnetIds: vpc.publicSubnetIds,
+  subnetIds: vpc.privateSubnetIds,
+  // /\ era public (antes)
   launchConfigurationArgs: {
     instanceType: size,
     imageId: ami.then((ami) => ami.id),
     keyName: deployer.keyName,
-    associatePublicIpAddress: true,
+    //associatePublicIpAddress: true,
     namePrefix: "bastion",
     securityGroups: [group.id],
     userData: userData,
