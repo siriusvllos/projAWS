@@ -13,7 +13,7 @@ const deployer = new aws.ec2.KeyPair("deployer", {
 const bucket = new aws.s3.Bucket("images");
 exports.bucketName = bucket.id;
 
-const vpc = new awsx.ec2.Vpc("main");
+const vpc = new awsx.ec2.DefaultVpc("default-vpc");
 const vpcId = vpc.vpcId;
 const privateSubnetIds = vpc.privateSubnetIds;
 const publicSubnetIds = vpc.publicSubnetIds;
@@ -77,13 +77,13 @@ const bastion = new aws.route53.Record("bastion", {
 });
 
 const autoScalingGroup = new classic.autoscaling.AutoScalingGroup("teste-asg", {
-  subnetIds: vpc.privateSubnetIds,
-  // /\ era public (antes)
+  vpcZoneIdentifiers: vpc.privateSubnetIds,  // replace with the IDs of your VPC Subnets
   launchConfigurationArgs: {
+    availabilityZones: ["sa-east-1a"],
     instanceType: size,
     imageId: ami.then((ami) => ami.id),
     keyName: deployer.keyName,
-    //associatePublicIpAddress: true,
+    associatePublicIpAddress: false, //valor default true
     namePrefix: "bastion",
     securityGroups: [group.id],
     userData: userData,
