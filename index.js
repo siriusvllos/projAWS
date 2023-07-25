@@ -3,6 +3,8 @@ const pulumi = require("@pulumi/pulumi");
 const fs = require("fs");
 const aws = require("@pulumi/aws");
 const awsx = require("@pulumi/awsx");
+const classic = require("@pulumi/awsx/classic");
+const { SizeConstraintSet } = require("@pulumi/aws/waf");
 
 const deployer = new aws.ec2.KeyPair("deployer", {
   publicKey:
@@ -11,7 +13,7 @@ const deployer = new aws.ec2.KeyPair("deployer", {
 const bucket = new aws.s3.Bucket("images");
 exports.bucketName = bucket.id;
 
-const vpc = new awsx.ec2.Vpc("main");
+const vpc = new awsx.ec2.DefaultVpc("default-vpc");
 const vpcId = vpc.vpcId;
 const privateSubnetIds = vpc.privateSubnetIds;
 const publicSubnetIds = vpc.publicSubnetIds;
@@ -53,8 +55,6 @@ let group = new aws.ec2.SecurityGroup("main", {
 });
 
 const userData = fs.readFileSync("./userdata.sh", "ascii");
-// sudo npm install express ----> instalar todos os pacotes q o catinder requer instead
-// tee le uma coisa do teclado e grava num arquivo q eu passei como param
 
 let server = new aws.ec2.Instance("webserver-www", {
   instanceType: size,
@@ -73,7 +73,44 @@ const bastion = new aws.route53.Record("bastion", {
   type: "A",
   ttl: 300,
   records: [server.publicIp], //desse cara*
+  // vai associar esse nome aos 20 ips (autoscaling)
 });
+
+const template = new aws.ec2.LaunchTemplate("template", {
+  namePrefix: "bastion",
+  keyName: deployer.keyName,
+  imageId: ami.then((ami) => ami.id),
+  instanceType: size,
+  subnetId: publicSubnetIds[1],
+  networkInterfaces: [
+    { associatePublicIpAddress: "true", securityGroups: [group.id] },
+  ],
+  userData: Buffer.from(fs.readFileSync(`./userdata.sh`), 'binary').toString('base64'),
+});
+const available = aws.getAvailabilityZones({
+  state: "available",
+});
+const names = available.then((available) => available.names);
+const autoScalingGroup = new aws.autoscaling.Group("teste-asg", {
+  // vpcZoneIdentifiers: vpc.privateSubnetIds, // replace with the IDs of your VPC Subnets
+  // availabilityZones: ["sa-east-1a"],
+  availabilityZones: names,
+  maxSize: 3,
+  minSize: 1,
+  launchTemplate: {
+    id: template.id,
+    version: "$Latest",
+  },
+});
+// ISSO EH REFERENTE AO AWSX \/
+/* autoScalingGroup.scaleOnSchedule("scaleUpOnThursday", {
+  desiredCapacity: 2,
+  recurrence: { dayOfWeek: "Thursday" },
+});
+autoScalingGroup.scaleOnSchedule("scaleDownOnFriday", {
+  desiredCapacity: 1,
+  recurrence: { dayOfWeek: "Friday" },
+}); */
 
 const cost = new aws.budgets.Budget(
   "cost",
@@ -102,3 +139,4 @@ const cost = new aws.budgets.Budget(
 exports.cost = cost.name;
 exports.publicIp = server.publicIp; // desse cara*
 exports.publicHostName = server.publicDns;
+exports.az = names;
