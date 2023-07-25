@@ -76,27 +76,41 @@ const bastion = new aws.route53.Record("bastion", {
   // vai associar esse nome aos 20 ips (autoscaling)
 });
 
-const autoScalingGroup = new classic.autoscaling.AutoScalingGroup("teste-asg", {
-  vpcZoneIdentifiers: vpc.privateSubnetIds,  // replace with the IDs of your VPC Subnets
-  launchConfigurationArgs: {
-    availabilityZones: ["sa-east-1a"],
-    instanceType: size,
-    imageId: ami.then((ami) => ami.id),
-    keyName: deployer.keyName,
-    associatePublicIpAddress: false, //valor default true
-    namePrefix: "bastion",
-    securityGroups: [group.id],
-    userData: userData,
+const template = new aws.ec2.LaunchTemplate("template", {
+  namePrefix: "bastion",
+  keyName: deployer.keyName,
+  imageId: ami.then((ami) => ami.id),
+  instanceType: size,
+  subnetId: publicSubnetIds[1],
+  networkInterfaces: [
+    { associatePublicIpAddress: "true", securityGroups: [group.id] },
+  ],
+  userData: Buffer.from(fs.readFileSync(`./userdata.sh`), 'binary').toString('base64'),
+});
+const available = aws.getAvailabilityZones({
+  state: "available",
+});
+const names = available.then((available) => available.names);
+const autoScalingGroup = new aws.autoscaling.Group("teste-asg", {
+  // vpcZoneIdentifiers: vpc.privateSubnetIds, // replace with the IDs of your VPC Subnets
+  // availabilityZones: ["sa-east-1a"],
+  availabilityZones: names,
+  maxSize: 3,
+  minSize: 1,
+  launchTemplate: {
+    id: template.id,
+    version: "$Latest",
   },
 });
-autoScalingGroup.scaleOnSchedule("scaleUpOnThursday", {
+// ISSO EH REFERENTE AO AWSX \/
+/* autoScalingGroup.scaleOnSchedule("scaleUpOnThursday", {
   desiredCapacity: 2,
   recurrence: { dayOfWeek: "Thursday" },
 });
 autoScalingGroup.scaleOnSchedule("scaleDownOnFriday", {
   desiredCapacity: 1,
   recurrence: { dayOfWeek: "Friday" },
-});
+}); */
 
 const cost = new aws.budgets.Budget(
   "cost",
@@ -125,3 +139,4 @@ const cost = new aws.budgets.Budget(
 exports.cost = cost.name;
 exports.publicIp = server.publicIp; // desse cara*
 exports.publicHostName = server.publicDns;
+exports.az = names;
