@@ -63,7 +63,7 @@ let server = new aws.ec2.Instance("webserver-catinder", {
   subnetId: publicSubnetIds[1],
   ami: ami.then((ami) => ami.id),
   userData: userData,
-}); // o ip desse cara* vai dentro do route53
+});
 
 const rota = new aws.route53.Record("route-catinder", {
   // isirius.link ID ----->>>>> Z02274863NULTFNYSASLO :) <3
@@ -72,15 +72,20 @@ const rota = new aws.route53.Record("route-catinder", {
   name: "catinder",
   type: "A",
   ttl: 300,
-  records: [server.publicIp],
+  aliases: [{
+    evaluateTargetHealth: true,
+    name: catinderALB.dnsname,
+    zoneId: catinderALB.zoneId,
+  },],
+  // records: [server.publicIp], // ip publio do ELB
 });
 
-const alb = new awsx.lb.ApplicationLoadBalancer("web-traffic", {
+const catinderALB = new awsx.lb.ApplicationLoadBalancer("web-traffic", {
   securityGroups: [group.id],
   enableCrossZoneLoadBalancing: true, // se uma zona cair terá servidores em outra :)
 });
 const listener = alb.createListener("web-listener", {
-  port: 3030,
+  port: 80,
   defaultAction: {
     //?
   },
