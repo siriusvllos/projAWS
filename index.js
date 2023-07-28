@@ -56,7 +56,7 @@ let group = new aws.ec2.SecurityGroup("main", {
 
 const userData = fs.readFileSync("./userdata.sh", "ascii");
 
-let server = new aws.ec2.Instance("webserver-catinder", {
+let server = new aws.ec2.Instance("bastion", {
   instanceType: size,
   keyName: deployer.keyName,
   vpcSecurityGroupIds: [group.id],
@@ -65,11 +65,11 @@ let server = new aws.ec2.Instance("webserver-catinder", {
   userData: userData,
 });
 
-const rota = new aws.route53.Record("route-catinder", {
+const bastion = new aws.route53.Record("bastion", {
   // isirius.link ID ----->>>>> Z02274863NULTFNYSASLO :) <3
   // registro tipo A  ---> https://catinder.isirius.link/
   zoneId: "Z02274863NULTFNYSASLO",
-  name: "catinder",
+  name: "bastion",
   type: "A",
   ttl: 300,
   aliases: [{
@@ -90,7 +90,7 @@ const listener = alb.createListener("web-listener", {
     //?
   },
 });
-export const endpoint = listener.endpoint;
+exports.endpoint = listener.endpoint;
 
 const template = new aws.ec2.LaunchTemplate("template", {
   namePrefix: "webserver-catinder-",
