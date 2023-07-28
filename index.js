@@ -56,7 +56,7 @@ let group = new aws.ec2.SecurityGroup("main", {
 
 const userData = fs.readFileSync("./userdata.sh", "ascii");
 
-let server = new aws.ec2.Instance("webserver-www", {
+let server = new aws.ec2.Instance("webserver-catinder", {
   instanceType: size,
   keyName: deployer.keyName,
   vpcSecurityGroupIds: [group.id],
@@ -65,19 +65,30 @@ let server = new aws.ec2.Instance("webserver-www", {
   userData: userData,
 }); // o ip desse cara* vai dentro do route53
 
-const bastion = new aws.route53.Record("bastion", {
+const rota = new aws.route53.Record("route-catinder", {
   // isirius.link ID ----->>>>> Z02274863NULTFNYSASLO :) <3
-  // registro tipo A  ---> https://bastion.isirius.link/
+  // registro tipo A  ---> https://catinder.isirius.link/
   zoneId: "Z02274863NULTFNYSASLO",
-  name: "bastion",
+  name: "catinder",
   type: "A",
   ttl: 300,
-  records: [server.publicIp], //desse cara*
-  // vai associar esse nome aos 20 ips (autoscaling)
+  records: [server.publicIp],
 });
 
+const alb = new awsx.lb.ApplicationLoadBalancer("web-traffic", {
+  securityGroups: [group.id],
+  enableCrossZoneLoadBalancing: true, // se uma zona cair terá servidores em outra :)
+});
+const listener = alb.createListener("web-listener", {
+  port: 3030,
+  defaultAction: {
+    //?
+  },
+});
+export const endpoint = listener.endpoint;
+
 const template = new aws.ec2.LaunchTemplate("template", {
-  namePrefix: "bastion",
+  namePrefix: "webserver-catinder-",
   keyName: deployer.keyName,
   imageId: ami.then((ami) => ami.id),
   instanceType: size,
@@ -85,7 +96,9 @@ const template = new aws.ec2.LaunchTemplate("template", {
   networkInterfaces: [
     { associatePublicIpAddress: "true", securityGroups: [group.id] },
   ],
-  userData: Buffer.from(fs.readFileSync(`./userdata.sh`), 'binary').toString('base64'),
+  userData: Buffer.from(fs.readFileSync(`./userdata.sh`), "binary").toString(
+    "base64"
+  ),
 });
 const available = aws.getAvailabilityZones({
   state: "available",
